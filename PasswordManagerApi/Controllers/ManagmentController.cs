@@ -1,23 +1,78 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using PasswordManagerApi.Repository;
+using PasswordManagerApi.BL.Interfaces;
+using PasswordManagerApi.Entities;
+using PasswordManagerApi.Exceptions;
+
 
 namespace PasswordManagerApi.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     public class ManagmentController : Controller
     {
-        private UserRepository _userRepository;
-        public ManagmentController(UserRepository userRepository) 
+        private IManagmentBL _managmentBL;
+        public ManagmentController(IManagmentBL managmentBL) 
         {
-            _userRepository = userRepository;
+            _managmentBL = managmentBL;
+        }
+            
+        [HttpPost]
+        public async Task<ActionResult<TelegramUser>> RegisterUser([FromForm] string requestTelegramId, [FromForm]string telegramId)
+        {
+            try
+            {
+                var telegramUser = await _managmentBL.RegisterUser(requestTelegramId, telegramId);
+
+                return CreatedAtAction(nameof(GetTelegramUser), new { telegramId = telegramUser.TelegramId }, telegramUser);
+
+            }
+            catch (InvalidPermissionException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+            catch (Exception ex) 
+            {
+                return StatusCode(500, new { Message = "Internal server error:" + ex.Message});
+            }
+            
+        }
+        [HttpGet("GetTelegramUser")]
+        public async Task<ActionResult<TelegramUser>> GetTelegramUser(string telegramId)
+        {
+            try
+            {
+                var telegramUser = await _managmentBL.GetTelegramUser(telegramId);
+                return Ok(telegramUser);
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Internal server error:" + ex.Message });
+            }
+            
+        }
+        [HttpGet("GetAllUsers")]
+        public async Task<ActionResult<List<TelegramUser>>> GetAllUsers()
+        {
+            try
+            {
+                var telegramUsers = await _managmentBL.GetAllUsers();
+                return Ok(telegramUsers);
+            }
+            catch (NotFoundException ex) 
+            {
+                return NotFound(new { Message = "User database is empty" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, "Internal server error:" + ex.Message);
+            }
         }
 
-        [HttpGet("RegisterUser")]
-        public async Task<IActionResult> RegisterUser(string telegramId)
-        {
-            await _userRepository.RegisterUserAsync(telegramId);
-            return Ok();
-        }
+        //TO DO
+        // Удаление пользователя
     }
 }

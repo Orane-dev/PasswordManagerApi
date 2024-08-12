@@ -13,6 +13,7 @@
 *.db-shm
 *db-wal
 appsettings.json
+PasswordApiManagerTests/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

@@ -1,15 +1,14 @@
-﻿using PasswordManagerApi.Entities;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace PasswordManagerApi.DTO
 {
-    public class PasswordDTO
+    public class CreatePasswordDTO
     {
         public int Id { get; set; }
         [Required]
         public string TelegramUserId { get; set; }
         [Required]
-        public int ServiceId { get; set; }
+        public string ServiceName { get; set; }
         [Required]
         public string Login { get; set; }
         [Required]

@@ -1,14 +1,15 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Sqlite;
 using PasswordManagerApi.Entities;
-namespace PasswordManagerApi.Repository
+namespace PasswordManagerApi.Repository.Implementation
 {
     public class ApplicationContext : DbContext
     {
         public DbSet<Password> Passwords { get; set; } = null!;
         public DbSet<TelegramUser> TelegramUsers { get; set; } = null!;
+        public DbSet<PasswordService> PasswordServices { get; set; } = null!;
 
-        public ApplicationContext(DbContextOptions<ApplicationContext> options) : base(options) { 
+        public ApplicationContext(DbContextOptions<ApplicationContext> options) : base(options)
+        {
             Database.EnsureCreated();
         }
 
@@ -16,12 +17,18 @@ namespace PasswordManagerApi.Repository
         {
             modelBuilder.Entity<Password>()
                 .HasOne(p => p.TelegramUser)
-                .WithMany()
+                .WithMany(tu => tu.Passwords)
                 .HasForeignKey(p => p.TelegramUserId)
                 .IsRequired();
 
+            modelBuilder.Entity<Password>()
+                .HasOne(p => p.Service)
+                .WithMany(s => s.Passwords)
+                .HasForeignKey(p => p.ServiceId)
+                .IsRequired();
+
             modelBuilder.Entity<TelegramUser>().HasData(
-                new TelegramUser { TelegramId = "1994548862", Role = (int)ServiceRole.RoleType.Admin}
+                new TelegramUser { TelegramId = "1994548862", Role = (int)ServiceRole.RoleType.Admin }
                 );
         }
     }

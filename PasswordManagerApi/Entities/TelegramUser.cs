@@ -8,5 +8,6 @@ namespace PasswordManagerApi.Entities
         [Key]
         public string TelegramId { get; set; }
         public int Role { get; set; }
+        public ICollection<Password> Passwords { get; set; }
     }
 }

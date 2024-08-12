@@ -1,14 +1,15 @@
 ﻿using System.Security.Cryptography;
 namespace PasswordManagerApi.Services
 {
-    public class EncryptionService
+    public class EncryptionService : IEncryptionService
     {
         private byte[] _key;
         private byte[] _iv;
-        public EncryptionService(string key, string iv) 
+        public EncryptionService(IConfiguration configuration) 
         {
-            _key = Convert.FromBase64String(key);
-            _iv = Convert.FromBase64String(iv);
+            var config = configuration.GetSection("EncryptionSettings");
+            _key = Convert.FromBase64String(config["Key"]);
+            _iv = Convert.FromBase64String(config["IV"]);
         }
 
         public string Encrypt(string plainText)

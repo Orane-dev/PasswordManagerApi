@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using PasswordManagerApi.Entities;
-using PasswordManagerApi.Repository;
+using PasswordManagerApi.BL.Interfaces;
 using PasswordManagerApi.DTO;
-using System.ComponentModel.DataAnnotations;
+using PasswordManagerApi.Exceptions;
+using PasswordManagerApi.Repository.Implementation;
 
 namespace PasswordManagerApi.Controllers
 {
@@ -10,109 +10,88 @@ namespace PasswordManagerApi.Controllers
     [Route("api/[controller]")]
     public class PasswordController : Controller
     {
-        private readonly PasswordRepository _repository;
+        private IPasswordBL _passwordBL;
 
-        public PasswordController(PasswordRepository passwordRepository) 
+        public PasswordController(IPasswordBL passwordBL)
         {
-            _repository = passwordRepository;
+            _passwordBL = passwordBL;
         }
 
-        [HttpGet("GetPassword")]
-        public async Task<ActionResult<PasswordDTO>> GetPassword(string telegramId, string service)
+        [HttpGet]
+        public async Task<ActionResult<List<PasswordDTO>>> GetPassword(string telegramId, string service)
         {
             try
             {
-                var password = await _repository.GetPasswordAsync(telegramId, service);
-
-                if(password == null)
-                {
-                    return NotFound(new {Message = "Password not found for the given input data."});
-                }
-
-                var passwordDTO = new PasswordDTO
-                {
-                    Id = password.Id,
-                    TelegramUserId = password.TelegramUserId,
-                    Login = password.Login,
-                    PasswordServiceName = password.PasswordServiceName,
-                    EncryptedPassword = password.EncryptedPassword,
-                    CreateTime = DateTime.UtcNow,
-
-                };
-                return Ok(passwordDTO);
+                var passwords = await _passwordBL.GetPassword(telegramId, service);
+                return Ok(passwords);
             }
-            catch (Exception ex) 
+            catch (NotFoundException ex)
             {
-                return StatusCode(500, new {Message = $"Internal server error while processing get request: {ex.Message}",});
-            }
-            
-        }
-
-        [HttpPost("CreatePassword")]
-        public async Task<ActionResult> CreatePassword([FromBody] PasswordDTO passwordDTO)
-        {
-            try
-            {
-                var password = new Password
-                {
-                    Login = passwordDTO.Login,
-                    EncryptedPassword = passwordDTO.EncryptedPassword,
-                    TelegramUserId = passwordDTO.TelegramUserId,
-                    PasswordServiceName = passwordDTO.PasswordServiceName,
-                    CreateTime = DateTime.UtcNow,
-                };
-                await _repository.CreatePasswordAsync(password);
-                return CreatedAtAction(nameof(GetPassword), new { telegramId = password.TelegramUserId, service = password.PasswordServiceName }, passwordDTO);
+                return NotFound(new { Message = ex.Message });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Message = $"Internal server error while processing post request: {ex.Message}",});
+                return StatusCode(500, new { Message = "Internal server error: " + ex.Message });
             }
-            
+
         }
 
-        [HttpDelete("DeletePassword")]
+        [HttpPost]
+        public async Task<ActionResult> CreatePassword([FromBody] CreatePasswordDTO passwordDTO)
+        {
+            try
+            {
+                await _passwordBL.CreatePassword(passwordDTO);
+
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Internal server error: " + ex.Message });
+            }
+        }
+
+        [HttpDelete]
         public async Task<ActionResult> DeletePassword(string telegramId, string service, string login)
         {
             try
             {
-                var deleted = await _repository.DeletePasswordAsync(telegramId, service, login);
-                if (deleted == null)
-                {
-                    return NotFound((new { Message = "Password not found for the given input data." }));
-                }
+                await _passwordBL.DeletePassword(telegramId, service, login);
                 return NoContent();
             }
-            catch (Exception ex) {
-                return StatusCode(500, new { Message = $"Internal server error while processing delete request: {ex.Message}", });
+            catch (NotFoundException ex) 
+            { 
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, "Internal server error: " + ex);
             }
         }
 
         [HttpPut]
-        public async Task<ActionResult> PutPassword(int passwordId, PasswordDTO passwordDTO)
-        {
-            try
+            public async Task<ActionResult> PutPassword(CreatePasswordDTO passwordDTO)
             {
-                var putPassword = await _repository.PutPasswordAsync(passwordId, passwordDTO);
-                if (putPassword == null)
+                try
                 {
-                    return NotFound((new { Message = "Password not found for the given input data." }));
+                    await _passwordBL.PutPassword(passwordDTO);
+                    return NoContent();
                 }
-                return NoContent();
+                catch (NotFoundException ex) 
+                {
+                    return NotFound(ex.Message);
+                }
+                catch (Exception ex) 
+                { 
+                    return StatusCode(500, "Internal server error: " + ex.Message);
+                }
             }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { Message = $"Internal server error while processing put request: {ex.Message}", });
-            }
-        }
 
+            //TO DO 
+            // Упаковка паролей 
 
-        [HttpGet("GetUserServices")]
-        public async Task<Dictionary<int, string>> GetUserPasswordServices(string telegramId)
-        {
-            var userServices = await _repository.GetUserServicesAsync(telegramId);
-            return userServices;
+            // Импорт паролей
+
         }
-        
     }
-}
+
